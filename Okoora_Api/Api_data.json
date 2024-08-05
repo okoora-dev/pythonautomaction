@@ -1,0 +1,133 @@
+{
+          "beneficiaryId": "11898ccd-b9ba-46a8-8c4f-f2b25e7ec94b",
+          "approved_beneficiary": "2DE9CE1D-4EC3-42FB-9EAF-11D56D44A326",
+          "mail": "jipop81748@in2reach.com",
+          "password": "Okoora2!",
+          "Autho": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCIsImN0eSI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImRlZmRkYjRhLWEwNTAtNGFmZC1iZWJjLTJiYjdjZmQ3YTZhMyIsIkVtYWlsIjoiZmV0ZWIxNzcxNUByYW5kcmFpLmNvbSIsIlVzZXJOYW1lIjoiZmV0ZWIxNzcxNUByYW5kcmFpLmNvbSIsIlVzZXJJZCI6ImRlZmRkYjRhLWEwNTAtNGFmZC1iZWJjLTJiYjdjZmQ3YTZhMyIsIkFjY291bnRJZCI6IjU0Yzg3ZDE5LTI4NDQtNDgyMS04YWJkLTgzMGY1ZGI5MGY1YiIsIlByb2ZpbGVJZCI6IjE1NjQiLCJBY2NvdW50TmFtZSI6ImZldGViIHRlc3QgYml6IiwiRmlyc3ROYW1lIjoiZmV0ZWIgdGVzdCIsIkxhc3ROYW1lIjoidGVzdCIsIklwQWRkcmVzcyI6Ijk0LjI1MC4yMDMuMTI0IiwiQ291bnRyeSI6ImlsIiwiQWNjb3VudFJlZ3VsYXRvcklkIjoiNzg4MDY0NTMwMDAiLCJBY2NvdW50VHlwZSI6IkNvbXBhbnkiLCJQaG9uZU51bWJlciI6Ijk3MjA1NDU0NTQ1NDUiLCJQYWNrYWdlVHlwZSI6IlByaW1lIiwiUGxhbkVuZERhdGUiOiIxLzE4LzIwMjQgMzowMzo1NiBQTSIsIlByb2ZpbGVBY3RpdmF0ZVN0YXR1cyI6ImFwcHJvdmVkIiwiU2l0ZVNvdXJjZSI6Ik9rb29yYSIsIkVsaWdpYmxlIjoiVHJ1ZSIsImxpbWl0c0Rpc2NsYWltZXJBcHByb3ZhbCI6IlRydWUiLCJDY0FjY291bnRJZCI6IiIsIkNjQ29udGFjdElkIjoiIiwiQXdBY2NvdW50SWQiOiJhY2N0X21nSkkzbjFLT0JDY0hhWDJjZmt5WmciLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsImV4cCI6MTcwNDE4NDkzMCwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo0MjAwIiwiYXVkIjoiaHR0cDovL2xvY2FsaG9zdDo0MjAwIn0.R1KFCSPrEMqybZ3Y3iNClLKAZF3CgITTHfwo0IsksmGG1EESZ7V7H506l6qSdVKvovqX8jrBDXhmE0sjsQaf9Q",
+          "accountId": "b595f697-14fc-4ba7-9091-039254bd41f8",
+          "request_id": "Okoora_AjbqC94yqGVSujVDRLY3Z5lXpVKXNFbq",
+
+          "payload_with_iban" : {
+            "identity": {
+                "beneficiaryType": 2,
+                "idNumber": "13334879",
+                "email": "testw@uut.com",
+                "name": "test",
+                "birthDate": "1974-01-01"
+            },
+            "address": {
+                "country": "AT",
+                "state": "Styria",
+                "city": "Aibl",
+                "street": "street",
+                "houseNumber": "8",
+                "zipCode": "455555"
+            },
+            "bankAccountInformation": {
+                "currency": "ILS",
+                "iban": "IL280118050000239362314"
+            },
+            "paymentReason": 18,
+            "paymentReasonOther": "QQQ",
+            "paymentTerms": 2
+        },
+
+          "payload_with_bank_detail":{
+                "identity": {
+                    "beneficiaryType": 2,
+                    "idNumber": "13334879",
+                    "email": "testw@uut.com",
+                    "name": "test",
+                    "birthDate": "1974-01-01"
+                },
+                "address": {
+                    "country": "AT",
+                    "state": "Styria",
+                    "city": "Aibl",
+                    "street": "street",
+                    "houseNumber": "8",
+                    "zipCode": "455555"
+                },
+                "bankAccountInformation":{
+                        "currency": "ILS",
+                        "bankCode": "11",
+                        "branchCode": "805",
+                        "bankCountry": "IL",
+                        "bankAccountNumber": "239362314"
+
+                },
+                "paymentReason": 18,
+                "paymentReasonOther": "QQQ",
+                "paymentTerms": 2
+            },
+
+              "payload_bank_and_iban": {
+                  "identity": {
+                      "beneficiaryType": 2,
+                      "idNumber": "13334879",
+                      "email": "testw@uut.com",
+                      "name": "payload_bank_and_iban",
+                      "birthDate": "1974-01-01"
+                  },
+                  "address": {
+                      "country": "AT",
+                      "state": "Styria",
+                      "city": "Aibl",
+                      "street": "street",
+                      "houseNumber": "8",
+                      "zipCode": "455555"
+                  },
+                  "bankAccountInformation": {
+                      "bankCode": "11",
+                      "bankBranch": "805",
+                      "bankCountry": "IL",
+                      "bankAccountNumber": "239362314",
+                      "currency": "ILS",
+                      "iban": "IL280118050000239362314"
+                  },
+                  "paymentReason": 18,
+                  "paymentReasonOther": "QQQ",
+                  "paymentTerms": 2
+
+              },
+
+       "negative_payload": {
+        "identity": {
+            "beneficiaryType": 2,
+            "idNumber": "13334879",
+            "email": "testw@uut.com",
+            "name": "test",
+            "birthDate": "1974-01-01"
+        },
+        "address": {
+            "country": "AT",
+            "state": "Styria",
+            "city": "Aibl",
+            "street": "street",
+            "houseNumber": "8",
+            "zipCode": "455555"
+        },
+        "bankAccountInformation": {
+            "currency": "ILS",
+            "bankCode": "11",
+            "branchCode": "805",
+            "bankCountry": "IL",
+            "bankAccountNumber": "239362314"
+
+        },
+        "paymentReason": 18,
+        "paymentReasonOther": "QQQ",
+        "paymentTerms": 2
+    },
+        "update_payer_payload" : {
+          "name": "updatedName",
+          "email": "update_mail@fghg.com",
+          "payerType": 2,
+          "country": "IL",
+          "bankAccountInformation": {
+              "iban": "IL280118050000239362314",
+              "currency": "ILS"
+          },
+          "paymentReason": 2
+      }
+}
