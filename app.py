@@ -1,315 +1,233 @@
-import argparse
-import re
-from flask import Flask, jsonify, request, send_from_directory, render_template
-import subprocess
-import os
+from __future__ import absolute_import
+
 import json
-from datetime import datetime
-import threading
+import os
+from urlparse import urlparse
 
-app = Flask(__name__)
+from flask import Flask, render_template, request, redirect, session
+from flask_sslify import SSLify
+from rauth import OAuth2Service
+import requests
 
-# Directory to store test reports
-REPORTS_DIR = r'C:\Users\Administrator\Automation\Tests\test_reports'
-is_running = False
-running_tests_process = None
-os.makedirs(REPORTS_DIR, exist_ok=True)
+app = Flask(__name__, static_folder='static', static_url_path='')
+app.requests_session = requests.Session()
+app.secret_key = os.urandom(24)
 
-tests = [
-    {"name": "test_ActionByUserRole", "path": r"C:\Users\Administrator\Automation\Tests\test_ActionByUserRole.py"},
-    {"name": "test_AddBeneficiaries", "path": r"C:\Users\Administrator\Automation\Tests\test_AddBeneficiaries.py"},
-    {"name": "test_AddMoney", "path": r"C:\Users\Administrator\Automation\Tests\test_AddMoney.py"},
-    {"name": "test_AddPayment", "path": r"C:\Users\Administrator\Automation\Tests\test_AddPayment.py"},
-    {"name": "test_AddPaymentFromDeshboard", "path": r"C:\Users\Administrator\Automation\Tests\test_AddPaymentFromDeshboard.py"},
-    {"name": "test_ConvertFromDashboard", "path": r"C:\Users\Administrator\Automation\Tests\test_ConvertFromDashboard.py"},
-    {"name": "test_hit", "path": r"C:\Users\Administrator\Automation\Tests\test_hit.py"},
-    {"name": "test_mass_our_type_cost", "path": r"C:\Users\Administrator\Automation\Tests\test_mass_our_type_cost.py"},
-    {"name": "test_mass_payment", "path": r"C:\Users\Administrator\Automation\Tests\test_mass_payment.py"},
-    {"name": "max", "path": r"C:\Users\Administrator\Automation\Tests"},
-    {"name": "test_payment_our_fee", "path": r"C:\Users\Administrator\Automation\Tests\test_payment_our_fee.py"},
-    {"name": "test_TravelCash", "path": r"C:\Users\Administrator\Automation\Tests\test_TravelCash.py"},
-    {"name": "test_Edit_beneficiary", "path": r"C:\Users\Administrator\Automation\Tests\test_Edit_beneficiary.py"},
-    {"name": "test_LockUpFromDashboard", "path": r"C:\Users\Administrator\Automation\Tests\test_LockUpFromDashboard.py"},
-    {"name": "api", "path": r"C:\Users\Administrator\Automation\Okoora_Api"},
-    {"name": "run_full_regression", "path": r"C:\Users\Administrator\Automation\Tests"}
-]
+sslify = SSLify(app)
 
-@app.route('/tests.html')
-def tests_page():
-    return render_template('tests.html')
+with open('config.json') as f:
+    config = json.load(f)
 
-@app.route('/progress.html')
-def progress_page():
-    return render_template('progress.html')
 
-@app.route('/')
-def index():
-    return render_template('tests.html')
-
-@app.route('/data')
-def get_data():
-    data_files = [f for f in os.listdir(REPORTS_DIR) if f.endswith('.json')]
-    datasets = []
-    for file in data_files:
-        with open(os.path.join(REPORTS_DIR, file), 'r') as f:
-            data = json.load(f)
-            datasets.append(data)
-    return jsonify(datasets)
-
-@app.route('/kill_tests', methods=['POST'])
-def kill_tests():
-    global is_running, running_tests_process, progress, CURRENT_MODE
-    if not is_running:
-        return jsonify({"error": "No tests are currently running"}), 400
-
-    if running_tests_process:
-        running_tests_process.terminate()
-        running_tests_process = None
-
-    is_running = False
-    progress["log"] += f"\nProcess killed in {CURRENT_MODE} mode."
-    return jsonify({"message": "Running tests were successfully killed"}), 200
-
-CURRENT_MODE = 'demo'  # Default mode
-run_type = ""
-progress = {
-    "running": False,
-    "progress": 0,
-    "log": ""
-}
-
-@app.route('/progress')
-def get_progress():
-    return jsonify(progress)
-
-@app.route('/set_mode/<mode>', methods=['POST'])
-def set_mode(mode):
-    global CURRENT_MODE
-    CURRENT_MODE = mode
-    print(f'Setting mode to {mode}')
-    return jsonify(success=True, mode=mode)
-
-@app.route('/run_test/<test_name>', methods=['POST'])
-def run_test(test_name):
-    try:
-        global run_type
-        global CURRENT_MODE
-        mode = CURRENT_MODE  # Use the current mode
-
-        if test_name == "api":
-            test_path = next(test['path'] for test in tests if test['name'] == test_name)
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            report_file = os.path.join(REPORTS_DIR, f'{test_name}_report_{timestamp}.json')
-
-            # Run pytest with JSON report generation
-            result = subprocess.run(['pytest', test_path, '--json-report', f'--json-report-file={report_file}', f'--base-url={mode}'],
-                                    capture_output=True, text=True)
-            success = result.returncode == 0
-
-            # Read the generated report
-            with open(report_file, 'r') as f:
-                report_content = json.load(f)
-            return jsonify(success=success, output=result.stdout, report=report_content)
-
-        if test_name == "test_ActionByUserRole":
-            test_path = next(test['path'] for test in tests if test['name'] == test_name)
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            report_file = os.path.join(REPORTS_DIR, f'{test_name}_report_{timestamp}.json')
-
-            # Run pytest with JSON report generation
-            result = subprocess.run(['pytest', test_path, '--json-report', f'--base-url=demo', f'--json-report-file={report_file}'],
-                                    capture_output=True, text=True)
-            success = result.returncode == 0
-
-            # Read the generated report
-            with open(report_file, 'r') as f:
-                report_content = json.load(f)
-            return jsonify(success=success, output=result.stdout, report=report_content)
-
-        else:
-            if mode == "qa":
-                db_conection = "Ofakimdb"
-            else:
-                db_conection = "Ofakimdb_Copy"
-            test_path = next(test['path'] for test in tests if test['name'] == test_name)
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            report_file = os.path.join(REPORTS_DIR, f'{test_name}_report_{timestamp}.json')
-
-            # Run pytest with JSON report generation
-            result = subprocess.run(['pytest', test_path, '--json-report', f'--base-url={mode}', f'--db-name={db_conection}', f'--json-report-file={report_file}'],
-                                    capture_output=True, text=True)
-            success = result.returncode == 0
-
-            # Read the generated report
-            with open(report_file, 'r') as f:
-                report_content = json.load(f)
-
-            return jsonify(success=success, output=result.stdout, report=report_content)
-
-    except Exception as e:
-        return jsonify(success=False, error=str(e))
-
-@app.route('/run_full_api', methods=['POST'])
-def run_full_api():
-    try:
-        global progress
-        progress["running"] = True
-        progress["progress"] = 0
-        progress["log"] = ""
-
-        # Collecting all test paths for full API test
-        test_paths = [test['path'] for test in tests if test['name'] == "api"]
-
-        threading.Thread(target=run_api_tests, args=(test_paths, 'regression', "Ofakimdb_Copy")).start()
-        return jsonify(success=True)
-
-    except Exception as e:
-        return jsonify(success=False, error=str(e))
-
-@app.route('/run_max_api', methods=['POST'])
-def run_max_api():
-    try:
-        global progress
-        progress["running"] = True
-        progress["progress"] = 0
-        progress["log"] = ""
-
-        # Collecting all test paths for full API test
-        test_paths = [test['path'] for test in tests if test['name'] == "max"]
-
-        threading.Thread(target=run_api_tests, args=(test_paths, 'max', 'Ofakimdb_Copy')).start()
-        return jsonify(success=True)
-
-    except Exception as e:
-        return jsonify(success=False, error=str(e))
-
-@app.route('/run_full_regression', methods=['POST'])
-def run_full_regression():
-    try:
-        global progress
-        global is_running, running_tests_process
-        if is_running:
-            return jsonify({"error": "Tests are already running"}), 400
-
-        is_running = True
-        progress["running"] = True
-        progress["progress"] = 0
-        progress["log"] = ""
-        global run_type
-        global CURRENT_MODE
-        mode = CURRENT_MODE  # Use the current mode
-
-        if mode == "qa":
-            run_type = "qa"
-            db_conection = "Ofakimdb"
-        else:
-            run_type = "regression"
-            db_conection = "Ofakimdb_Copy"
-
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        report_file = os.path.join(REPORTS_DIR, f"run_full_regression_report_{timestamp}.json")
-
-        # Collecting all test paths for full regression
-        test_paths = [test['path'] for test in tests if test['name'] == "run_full_regression"]
-
-        # Run pytest with JSON report generation
-        threading.Thread(target=run_tests, args=(test_paths, mode, db_conection, report_file, run_type)).start()
-        return jsonify(success=True)
-
-    except Exception as e:
-        return jsonify(success=False, error=str(e))
-
-def run_tests(test_paths, mode, db_connection, report_file, run_type):
-    global progress, is_running, running_tests_process
-    progress["running"] = True
-    progress["progress"] = 0
-    progress["log"] = ""
-
-    # Get the total number of tests
-    test_count_result = subprocess.run(
-        ['pytest', '--collect-only'] + test_paths,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
-    total_tests = len(re.findall(r'<Function ', test_count_result.stdout))
-    if total_tests == 0:
-        progress["running"] = False
-        progress["progress"] = 100
-        progress["log"] = "No tests found."
-        is_running = False
-        return
-
-    running_tests_process = subprocess.Popen(
-        ['pytest'] + test_paths + [f'-m {run_type}', '-v', f'--base-url={mode}', f'--db-name={db_connection}', f'--json-report-file={report_file}'],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+def generate_oauth_service():
+    """Prepare the OAuth2Service that is used to make requests later."""
+    return OAuth2Service(
+        client_id=os.environ.get('UBER_CLIENT_ID'),
+        client_secret=os.environ.get('UBER_CLIENT_SECRET'),
+        name=config.get('name'),
+        authorize_url=config.get('authorize_url'),
+        access_token_url=config.get('access_token_url'),
+        base_url=config.get('base_url'),
     )
 
-    completed_tests = 0
-    for line in iter(running_tests_process.stdout.readline, ''):
-        progress["log"] += line
-        match = re.search(r'\[\s*(\d+)%\]', line)
-        if match:
-            percentage = int(match.group(1))
-            completed_tests = (percentage * total_tests) // 100
-            progress["progress"] = percentage
-        print(line, end='')
 
-    running_tests_process.wait()
-    progress["running"] = False
-    progress["progress"] = 100
-    is_running = False
+def generate_ride_headers(token):
+    """Generate the header object that is used to make api requests."""
+    return {
+        'Authorization': 'bearer %s' % token,
+        'Content-Type': 'application/json',
+    }
 
-    with open(report_file, 'r') as f:
-        report_content = json.load(f)
 
-def run_api_tests(test_paths, mark, db_env=None):
-    global progress, is_running, running_tests_process
-    progress["running"] = True
-    progress["progress"] = 0
-    progress["log"] = ""
+@app.route('/health', methods=['GET'])
+def health():
+    """Check the status of this application."""
+    return ';-)'
 
-    # Get the total number of tests
-    test_count_result = subprocess.run(
-        ['pytest', '--collect-only'] + test_paths,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+
+@app.route('/', methods=['GET'])
+def signup():
+    """The first step in the three-legged OAuth handshake.
+
+    You should navigate here first. It will redirect to login.uber.com.
+    """
+    params = {
+        'response_type': 'code',
+        'redirect_uri': get_redirect_uri(request),
+        'scopes': ','.join(config.get('scopes')),
+    }
+    url = generate_oauth_service().get_authorize_url(**params)
+    return redirect(url)
+
+
+@app.route('/submit', methods=['GET'])
+def submit():
+    """The other two steps in the three-legged Oauth handshake.
+
+    Your redirect uri will redirect you here, where you will exchange
+    a code that can be used to obtain an access token for the logged-in use.
+    """
+    params = {
+        'redirect_uri': get_redirect_uri(request),
+        'code': request.args.get('code'),
+        'grant_type': 'authorization_code'
+    }
+    response = app.requests_session.post(
+        config.get('access_token_url'),
+        auth=(
+            os.environ.get('UBER_CLIENT_ID'),
+            os.environ.get('UBER_CLIENT_SECRET')
+        ),
+        data=params,
     )
-    total_tests = len(re.findall(r'<Function ', test_count_result.stdout))
-    if total_tests == 0:
-        progress["running"] = False
-        progress["progress"] = 100
-        progress["log"] = "No tests found."
-        is_running = False
-        return
+    session['access_token'] = response.json().get('access_token')
 
-    running_tests_process = subprocess.Popen(
-        ['pytest'] + test_paths + ['-v', f'-m {mark}', f'--db-name={db_env}'],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    return render_template(
+        'success.html',
+        token=response.json().get('access_token')
     )
 
-    completed_tests = 0
-    for line in iter(running_tests_process.stdout.readline, ''):
-        progress["log"] += line
-        match = re.search(r'\[\s*(\d+)%\]', line)
-        if match:
-            percentage = int(match.group(1))
-            completed_tests = (percentage * total_tests) // 100
-            progress["progress"] = percentage
-        print(line, end='')
 
-    running_tests_process.wait()
-    progress["running"] = False
-    progress["progress"] = 100
-    is_running = False
+@app.route('/demo', methods=['GET'])
+def demo():
+    """Demo.html is a template that calls the other routes in this example."""
+    return render_template('demo.html', token=session.get('access_token'))
 
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'),
-                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(description="Run pytest with a specified mode.")
-    parser.add_argument('mode', type=str, help="Mode to run the tests (e.g., 'qa' or 'default')")
-    parser.add_argument('test_name', type=str, help="Name of the test to run")
-    return parser.parse_args()
+@app.route('/products', methods=['GET'])
+def products():
+    """Example call to the products endpoint.
+
+    Returns all the products currently available in San Francisco.
+    """
+    url = config.get('base_uber_url') + 'products'
+    params = {
+        'latitude': config.get('start_latitude'),
+        'longitude': config.get('start_longitude'),
+    }
+
+    response = app.requests_session.get(
+        url,
+        headers=generate_ride_headers(session.get('access_token')),
+        params=params,
+    )
+
+    if response.status_code != 200:
+        return 'There was an error', response.status_code
+    return render_template(
+        'results.html',
+        endpoint='products',
+        data=response.text,
+    )
+
+
+@app.route('/time', methods=['GET'])
+def time():
+    """Example call to the time estimates endpoint.
+
+    Returns the time estimates from the given lat/lng given below.
+    """
+    url = config.get('base_uber_url') + 'estimates/time'
+    params = {
+        'start_latitude': config.get('start_latitude'),
+        'start_longitude': config.get('start_longitude'),
+    }
+
+    response = app.requests_session.get(
+        url,
+        headers=generate_ride_headers(session.get('access_token')),
+        params=params,
+    )
+
+    if response.status_code != 200:
+        return 'There was an error', response.status_code
+    return render_template(
+        'results.html',
+        endpoint='time',
+        data=response.text,
+    )
+
+
+@app.route('/price', methods=['GET'])
+def price():
+    """Example call to the price estimates endpoint.
+
+    Returns the time estimates from the given lat/lng given below.
+    """
+    url = config.get('base_uber_url') + 'estimates/price'
+    params = {
+        'start_latitude': config.get('start_latitude'),
+        'start_longitude': config.get('start_longitude'),
+        'end_latitude': config.get('end_latitude'),
+        'end_longitude': config.get('end_longitude'),
+    }
+
+    response = app.requests_session.get(
+        url,
+        headers=generate_ride_headers(session.get('access_token')),
+        params=params,
+    )
+
+    if response.status_code != 200:
+        return 'There was an error', response.status_code
+    return render_template(
+        'results.html',
+        endpoint='price',
+        data=response.text,
+    )
+
+
+@app.route('/history', methods=['GET'])
+def history():
+    """Return the last 5 trips made by the logged in user."""
+    url = config.get('base_uber_url_v1_1') + 'history'
+    params = {
+        'offset': 0,
+        'limit': 5,
+    }
+
+    response = app.requests_session.get(
+        url,
+        headers=generate_ride_headers(session.get('access_token')),
+        params=params,
+    )
+
+    if response.status_code != 200:
+        return 'There was an error', response.status_code
+    return render_template(
+        'results.html',
+        endpoint='history',
+        data=response.text,
+    )
+
+
+@app.route('/me', methods=['GET'])
+def me():
+    """Return user information including name, picture and email."""
+    url = config.get('base_uber_url') + 'me'
+    response = app.requests_session.get(
+        url,
+        headers=generate_ride_headers(session.get('access_token')),
+    )
+
+    if response.status_code != 200:
+        return 'There was an error', response.status_code
+    return render_template(
+        'results.html',
+        endpoint='me',
+        data=response.text,
+    )
+
+
+def get_redirect_uri(request):
+    """Return OAuth redirect URI."""
+    parsed_url = urlparse(request.url)
+    if parsed_url.hostname == 'localhost':
+        return 'http://{hostname}:{port}/submit'.format(
+            hostname=parsed_url.hostname, port=parsed_url.port
+        )
+    return 'https://{hostname}/submit'.format(hostname=parsed_url.hostname)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.debug = os.environ.get('FLASK_DEBUG', True)
+    app.run(port=7000)
