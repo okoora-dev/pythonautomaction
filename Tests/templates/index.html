@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Regression Tests</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .dashboard-title {
+            font-size: 2.5rem;
+            color: #424242;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .navbar {
+            background-color: #26a69a;
+            padding: 0 20px;
+        }
+        .navbar .brand-logo {
+            font-size: 1.5rem;
+            color: white;
+        }
+        .navbar .nav-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .navbar .nav-wrapper ul {
+            display: flex;
+            list-style: none;
+        }
+        .navbar .nav-wrapper ul li {
+            margin: 0 15px;
+        }
+        .navbar .nav-wrapper ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+        }
+        .navbar .nav-wrapper ul li a:hover {
+            color: #ffd54f;
+        }
+        .charts-row {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            margin-top: 20px;
+        }
+        .chart-left {
+            order: 1;
+        }
+        .chart-right {
+            order: 2;
+        }
+        .suite-highlights-container {
+            width: 100%;
+            margin-top: 50px;
+        }
+        .report-container {
+            margin-top: 50px;
+        }
+        .progress-container {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .progress-bar {
+            height: 30px;
+        }
+        .progress-label {
+            margin-top: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #ff5722;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-wrapper">
+            <ul id="nav-mobile" class="right hide-on-med-and-down">
+                <li><a href="#dashboard">Dashboard</a></li>
+                <li><a href="tests.html">Tests</a></li>
+                <li><a href="#reports">Reports</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1 class="dashboard-title">Okoora Web Regression Tests</h1>
+        <!-- Charts Row -->
+        <div class="charts-row">
+            <!-- Bar Chart Section -->
+            <div class="chart-container chart-left">
+                <canvas id="testResultsChart"></canvas>
+            </div>
+            <!-- Line Chart Section -->
+            <div class="chart-container chart-right">
+                <canvas id="testResultsLineChart"></canvas>
+            </div>
+        </div>
+        <!-- Suite Highlights Section -->
+        <div class="suite-highlights-container">
+            <h2>Most Failed Test</h2>
+            <div class="progress-container">
+                <div class="progress">
+                    <div id="mostFailedTestBar" class="progress-bar bg-danger" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <p id="mostFailedTestText"></p>
+                <p id="failPerTimeLabel" class="progress-label"></p>
+            </div>
+        </div>
+        <!-- Report Section -->
+        <div class="report-container">
+            <h2>Test Report</h2>
+            <div id="testReport"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(datasets => {
+                    console.log('Fetched datasets:', datasets); // Debugging line
+
+                    const ctxBar = document.getElementById('testResultsChart').getContext('2d');
+                    const ctxLine = document.getElementById('testResultsLineChart').getContext('2d');
+                    const labels = [];
+                    const passData = [];
+                    const failData = [];
+                    const backgroundColors = [];
+                    const borderColors = [];
+                    const dates = [];
+                    const datePassCounts = {};
+                    const dateFailCounts = {};
+                    const testFailures = {};
+                    const testDurations = {};
+
+                    datasets.forEach(dataset => {
+                        const date = new Date(dataset.created * 1000).toLocaleDateString();
+                        if (!dates.includes(date)) {
+                            dates.push(date);
+                        }
+                        dataset.tests.forEach(test => {
+                            const label = `${test.keywords[0]} (${date})`;
+                            labels.push(label);
+                            if (test.outcome === 'passed') {
+                                passData.push(1);
+                                failData.push(0);
+                                backgroundColors.push('rgba(75, 192, 192, 0.2)');
+                                borderColors.push('rgba(75, 192, 192, 1)');
+                                datePassCounts[date] = (datePassCounts[date] || 0) + 1;
+                            } else {
+                                passData.push(0);
+                                failData.push(1);
+                                backgroundColors.push('rgba(255, 99, 132, 0.2)');
+                                borderColors.push('rgba(255, 99, 132, 1)');
+                                dateFailCounts[date] = (dateFailCounts[date] || 0) + 1;
+                                testFailures[test.nodeid] = (testFailures[test.nodeid] || 0) + 1;
+                                testDurations[test.nodeid] = (testDurations[test.nodeid] || 0) + dataset.duration;
+                            }
+                        });
+                    });
+
+                    // Create Bar Chart
+                    new Chart(ctxBar, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Pass/Fail',
+                                    data: passData.map((pass, index) => pass || failData[index]),
+                                    backgroundColor: backgroundColors,
+                                    borderColor: borderColors,
+                                    borderWidth: 1
+                                }
+                            ]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value === 1 ? 'Pass' : 'Fail';
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.raw === 1 ? 'Pass' : 'Fail';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Prepare data for Line Chart
+                    const lineChartLabels = dates;
+                    const lineChartPassData = dates.map(date => datePassCounts[date] || 0);
+                    const lineChartFailData = dates.map(date => dateFailCounts[date] || 0);
+
+                    // Create Line Chart
+                    new Chart(ctxLine, {
+                        type: 'line',
+                        data: {
+                            labels: lineChartLabels,
+                            datasets: [
+                                {
+                                    label: 'Passes',
+                                    data: lineChartPassData,
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                    fill: true
+                                },
+                                {
+                                    label: 'Failures',
+                                    data: lineChartFailData,
+                                    borderColor: 'rgba(255, 99, 132, 1)',
+                                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+
+                    // Find the most failed test
+                    let mostFailedTest = '';
+                    let mostFailedCount = 0;
+                    let mostFailedDuration = 0;
+                    Object.keys(testFailures).forEach(testName => {
+                        if (testFailures[testName] > mostFailedCount) {
+                            mostFailedCount = testFailures[testName];
+                            mostFailedDuration = testDurations[testName];
+                            mostFailedTest = testName;
+                        }
+                    });
+
+                    // Calculate fail per time run
+                    const failPerTimeRun = mostFailedDuration > 0 ? (mostFailedCount / mostFailedDuration).toFixed(2) : 0;
+
+                    // Update the progress bar and labels for the most failed test
+                    const mostFailedTestBar = document.getElementById('mostFailedTestBar');
+                    const mostFailedTestText = document.getElementById('mostFailedTestText');
+                    const failPerTimeLabel = document.getElementById('failPerTimeLabel');
+                    const totalFailures = Object.values(testFailures).reduce((a, b) => a + b, 0);
+                    const failurePercentage = (mostFailedCount / totalFailures) * 100;
+
+                    mostFailedTestBar.style.width = `${failurePercentage}%`;
+                    mostFailedTestBar.setAttribute('aria-valuenow', failurePercentage);
+                    mostFailedTestText.innerText = `${mostFailedTest}: ${mostFailedCount} failures (${failurePercentage.toFixed(2)}%)`;
+                    failPerTimeLabel.innerText = `Failures per time run: ${failPerTimeRun}`;
+
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error); // Debugging line
+                });
+
+            // Function to run test and display the report
+            function runTest(testName) {
+                fetch(`/run_test/${testName}`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('testReport').innerHTML = `<pre>${JSON.stringify(data.report, null, 2)}</pre>`;
+                        } else {
+                            document.getElementById('testReport').innerHTML = `<p>Error: ${data.error}</p>`;
+                        }
+                    });
+            }
+
+            // Example of how to trigger test run (you can integrate this with buttons or other UI elements)
+            // runTest('test_ActionByUserRole');
+        });
+    </script>
+</body>
+</html>

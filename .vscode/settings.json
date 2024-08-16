@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/f953464e-dc10-4ef3-b50b-90a9c2b7f2e0/resourceGroups/DefaultResourceGroup-WEU/providers/Microsoft.Web/sites/OkooraPythonAutomation",
+    "appService.deploySubpath": "."
+}
